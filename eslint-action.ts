@@ -4,17 +4,18 @@ export async function eslintDisableAction(results: Match[]) {
   for (const { filepath, lineNumber, message } of results) {
     const file = await Bun.file(filepath).text();
     const updatedFile = file.split("\n");
-    const line = updatedFile[lineNumber];
+    const line = updatedFile[lineNumber - 1];
     const textToInsert = getTextToInsert({ message, line });
     if (textToInsert) {
-      updatedFile.splice(lineNumber, 0, textToInsert);
+      updatedFile.splice(lineNumber - 1, 0, textToInsert);
     }
+    await Bun.write(filepath, updatedFile.join("\n"));
   }
 }
 
 function getTextToInsert({ message, line }: { message: string; line: string }) {
-  const errorMatch = line.match(/\[Error\/(?<eslintRule>.+)$/);
-  const whitespaceMatch = message.match(/^(?<whitespace>\s+)[^\s]/);
+  const errorMatch = /\[Error\/(?<eslintRule>.+)]$/.exec(message);
+  const whitespaceMatch = /^(?<whitespace>\s*)[^\s]/.exec(line);
   if (errorMatch?.groups && whitespaceMatch?.groups) {
     const { eslintRule } = errorMatch.groups;
     const { whitespace } = whitespaceMatch.groups;
